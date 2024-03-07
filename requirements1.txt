@@ -2,4 +2,3 @@ transformers
 bert-extractive-summarizer
 torch
 python-dotenv
-sentencepiece
