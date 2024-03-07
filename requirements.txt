@@ -17,3 +17,6 @@ Jinja2==3.0.3
 requests
 gtts
 python-multipart
+youtube-transcript-api
+transformers 
+sentencepiece
