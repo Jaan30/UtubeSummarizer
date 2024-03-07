@@ -18,5 +18,4 @@ requests
 gtts
 python-multipart
 youtube-transcript-api
-transformers 
-sentencepiece
+transformers>=4.38.2
