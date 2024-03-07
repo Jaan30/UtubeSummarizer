@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>YouTube Video Summarizer</title>
+        <link rel="stylesheet" href="./static/style.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+        <style>
+            html, body {
+                background: linear-gradient(to bottom right, #f48ccc 0%, #6696e8 100%);
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            .container {
+                width: 80%;
+                margin: 0 auto;
+                padding: 10px;
+                background-color: white;
+                border-radius: 20px;
+                box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
+        </style>
+    </head>
+    <body>
+        <!-- <iframe width="560" height="315" src="{{url}}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+         -->
+         <!-- <p>{{url}}</p> -->
+         <div class="container">
+            <iframe width="740" height="400" src="{{url}}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            <div style="margin-left: 2vw; padding: 20px; border: 1px solid black; border-radius: 20px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);">
+                <h2>Summary Text</h2>
+                <p style="text-align: justify;">{{summary_text}}</p>
+                <h2>Summary Audio</h2>
+                <audio controls>
+                    <source src="./static/summary_audio.mp3" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                </audio>
+                  
+                  
+            </div>
+        </div>
+        
+        
+         <!-- <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <iframe width="740" height="400" src="{{url}}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                </div>
+                <div class="col-md-3">
+                    <p>{{summary_text}}</p>
+                </div>
+            </div>
+        </div>  -->
+        
+    </body>
+</html>
