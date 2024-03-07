@@ -18,4 +18,4 @@ requests
 gtts
 python-multipart
 youtube-transcript-api
-transformers>=4.38.2
+langdetect
