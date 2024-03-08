@@ -18,6 +18,7 @@ from langdetect import detect
 import torch
 import requests
 import youtube_transcript_api
+from transformers import BartForConditionalGeneration, BartTokenizer
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptAvailable, TranscriptsDisabled
 from gtts import gTTS
 import shutil
@@ -44,7 +45,7 @@ def index(request: Request):
 async def submit_url(request: Request, url: str = Form(...), language: str = Form(...)): 
     # Process the URL and language data as needed
     print(f"Received URL: {url}, Language: {language}")
-    transcript_text = get_transcript(url,target_language='en')
+    transcript_text = get_transcript(url)
     youtube_url = url
     output_path = "./output"
     
@@ -55,11 +56,23 @@ async def submit_url(request: Request, url: str = Form(...), language: str = For
     else:
         translation_text = transcript_text
 
-    summarizer = pipeline("summarization") 
-    result = summarizer(translation_text, max_length=250, min_length=100, do_sample=False)
-    summary_text = result[0]['summary_text']
-    print("summary_text :", summary_text)
-    
+    # summarizer = pipeline("summarization") 
+    # result = summarizer(translation_text, max_length=250, min_length=100, do_sample=False)
+    # summary_text = result[0]['summary_text']
+    # print("summary_text :", summary_text)
+    tokenizer = BartTokenizer.from_pretrained("facebook/bart-large-cnn")
+    model = BartForConditionalGeneration.from_pretrained("facebook/bart-large-cnn")
+
+    # Tokenize the translation_text
+    inputs = tokenizer([translation_text], max_length=1024, return_tensors="pt", truncation=True)
+
+    # Generate summary using the BART model
+    summary_ids = model.generate(inputs.input_ids, max_length=250, min_length=100, num_beams=4, early_stopping=True)
+
+    # Decode the summary tokens back into text
+    summary_text = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+
+    print("Summary Text:", summary_text)
     # Generate audio for the summary
     tts = gTTS(summary_text, lang='en')
 
@@ -91,66 +104,31 @@ def translate_audio(audio_file_path, target_language='en'):
             file=audio_file,
             target_language=target_language
         )
-
-    return response.text
-
-def get_transcript(url, target_language='en'):
+        text =response.text
+    return text
+    
+def get_transcript(url):
     try:
-        video_id = url.split("v=")[1]
+        video_id = url.split("v=")[1]  # Extract video ID from the URL
         transcript = YouTubeTranscriptApi.get_transcript(video_id)
-
-        # Check if any transcript is available
-        if not transcript:
-            return None
-
+        # print(transcript)
         text = ""
         for line in transcript:
             text += line['text'] + " "
-
-        # Check if English transcript exists or matches target language
-        if 'en' in [t['language'] for t in transcript] and target_language == 'en':
-            return text.strip()  # Return English transcript directly
-
-        # If no English transcript or a different target language is needed, translate
-        translator = Translator()
-        detected_language = translator.detect(text).lang  # Detect the actual language
-        translation = translator.translate(text, src=detected_language, dest=target_language)
-        return translation.text
+        detected_lang = detect(text)
+        # Translate transcript to English if necessary
+        if detected_lang != 'en':
+            translator = Translator()
+            translation = translator.translate(text,src=detected_lang, dest='en')
+            text = translation.text 
+            return text
+        else:
+            return text
 
     except NoTranscriptAvailable:
-        print("No transcript available for the video.")
         return None
-
     except TranscriptsDisabled:
-        print("Transcripts are disabled for the video.")
         return None
-        
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return None
-
-# def get_transcript(url):
-#     try:
-#         video_id = url.split("v=")[1]  # Extract video ID from the URL
-#         transcript = YouTubeTranscriptApi.get_transcript(video_id)
-#         text = ""
-#         for line in transcript:
-#             text += line['text'] + " "
-
-#         # Detect the language of the transcript
-#         transcript_language = detect(text)
-    
-#         if transcript_language != 'en':
-#             translator = Translator()
-#             translation = translator.translate(text, src=transcript_language, dest='en')
-#             text = translation.text
-#             return text
-#         else:
-#             return text
-#     except NoTranscriptAvailable:
-#         return None
-#     except TranscriptsDisabled:
-#         return None
 
 def download_audio(youtube_url, output_path, filename="audio"):
     yt = YouTube(youtube_url)
