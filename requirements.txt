@@ -19,3 +19,4 @@ gtts
 python-multipart
 youtube-transcript-api
 langdetect
+sentencepiece

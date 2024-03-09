@@ -15,6 +15,7 @@ import openai
 from transformers import pipeline
 from summarizer import Summarizer
 from langdetect import detect
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
 import torch
 import requests
 import youtube_transcript_api
@@ -55,23 +56,21 @@ async def submit_url(request: Request, url: str = Form(...), language: str = For
         translation_text = translate_audio(audio_file_path, target_language='en')
     else:
         translation_text = transcript_text
-
-    # summarizer = pipeline("summarization") 
-    # result = summarizer(translation_text, max_length=250, min_length=100, do_sample=False)
-    # summary_text = result[0]['summary_text']
-    # print("summary_text :", summary_text)
+    
+    min_length,max_length = get_min_max(translation_text)
+    
     tokenizer = BartTokenizer.from_pretrained("facebook/bart-large-cnn")
     model = BartForConditionalGeneration.from_pretrained("facebook/bart-large-cnn")
-
+    
     # Tokenize the translation_text
     inputs = tokenizer([translation_text], max_length=1024, return_tensors="pt", truncation=True)
 
     # Generate summary using the BART model
-    summary_ids = model.generate(inputs.input_ids, max_length=250, min_length=100, num_beams=4, early_stopping=True)
+    summary_ids = model.generate(inputs.input_ids, max_length=max_length, min_length=min_length, num_beams=4, early_stopping=True)
 
     # Decode the summary tokens back into text
     summary_text = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
-
+    
     print("Summary Text:", summary_text)
     # Generate audio for the summary
     tts = gTTS(summary_text, lang='en')
@@ -115,7 +114,7 @@ def get_transcript(url):
         text = ""
         for line in transcript:
             text += line['text'] + " "
-        detected_lang = detect(text)
+        # detected_lang = detect(text)
         # Translate transcript to English if necessary
         if detected_lang != 'en':
             translator = Translator()
@@ -142,6 +141,20 @@ def download_audio(youtube_url, output_path, filename="audio"):
     downloaded_file_path = os.path.join(output_path, default_filename)
     new_file_path = os.path.join(output_path, f"{filename}.mp3")
     os.rename(downloaded_file_path, new_file_path)
+
+def get_min_max(transcript):
+    num_words = len(transcript)
+
+    if num_words < 500:
+        min_length, max_length = 100, 125
+    elif num_words <= 1000:
+        min_length, max_length = 125, 150
+    elif num_words < 4000:
+        min_length, max_length = 150, 200
+    else:
+        min_length, max_length = 175, 200
+
+    return min_length, max_length
 
 if __name__ == '__main__':
     uvicorn.run(app, host='0.0.0.0', port=8000)
