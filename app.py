@@ -15,7 +15,7 @@ import openai
 from transformers import pipeline
 from summarizer import Summarizer
 from langdetect import detect
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
 import torch
 import requests
 import youtube_transcript_api
@@ -49,6 +49,7 @@ async def submit_url(request: Request, url: str = Form(...), language: str = For
     # Process the URL and language data as needed
     print(f"Received URL: {url}, Language: {language}")
     transcript_text = get_transcript(url, target_language='en')
+    # refine_text = preprocess_transcript(transcript_text)
     youtube_url = url
     output_path = "./output"
     
@@ -58,9 +59,7 @@ async def submit_url(request: Request, url: str = Form(...), language: str = For
         translation_text = translate_audio(audio_file_path, target_language='en')
     else:
         translation_text = transcript_text
-    
-    min_length,max_length = get_min_max(translation_text)
-    
+        
     tokenizer = BartTokenizer.from_pretrained("facebook/bart-large-cnn")
     model = BartForConditionalGeneration.from_pretrained("facebook/bart-large-cnn")
     
@@ -68,7 +67,7 @@ async def submit_url(request: Request, url: str = Form(...), language: str = For
     inputs = tokenizer([translation_text], max_length=1024, return_tensors="pt", truncation=True)
 
     # Generate summary using the BART model
-    summary_ids = model.generate(inputs.input_ids, max_length=max_length, min_length=min_length, num_beams=4, early_stopping=True)
+    summary_ids = model.generate(inputs.input_ids, max_length=250, min_length=150, num_beams=4, early_stopping=True)
 
     # Decode the summary tokens back into text
     summary_text = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
@@ -116,10 +115,11 @@ def get_transcript(url, target_language='en'):
         # Extract the languages from the transcript list
         available_languages = [transcript.language for transcript in transcript_list]
         lang = get_language_code(available_languages[0].split('(')[0].strip())
-
+   
         transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=[lang])
         text = " ".join(line['text'] for line in transcript)
-        text = translate_text(text, target_language=target_language)
+        if lang!='en':
+            text = translate_text(text)
         return text
 
     except (NoTranscriptAvailable, TranscriptsDisabled):
@@ -129,7 +129,7 @@ def get_language_code(language_name):
     # You need to define language_map somewhere in your code
     return language_map.get(language_name)
 
-def translate_text(text, target_language='en'):
+def translate_text(text , target_language='en'):
     translator = Translator()
     translated_text = translator.translate(text, dest=target_language).text
     return translated_text
@@ -147,19 +147,20 @@ def download_audio(youtube_url, output_path, filename="audio"):
     new_file_path = os.path.join(output_path, f"{filename}.mp3")
     os.rename(downloaded_file_path, new_file_path)
 
-def get_min_max(transcript):
-    num_words = len(transcript)
-
-    if num_words < 500:
-        min_length, max_length = 100, 125
-    elif num_words <= 1000:
-        min_length, max_length = 125, 150
-    elif num_words < 4000:
-        min_length, max_length = 150, 200
-    else:
-        min_length, max_length = 175, 200
-
-    return min_length, max_length
+# def preprocess_transcript(transcript):
+    
+#     # Remove punctuation
+#     transcript = re.sub(r'[^\w\s]', '', transcript)
+        
+#     # Remove non-verbal expressions
+#     non_verbal_expressions = ["[laughter]", "[music]", "[applause]"]
+#     for expression in non_verbal_expressions:
+#         transcript = transcript.replace(expression, "")
+    
+#     # Remove extra whitespace
+#     transcript = ' '.join(transcript.split())
+    
+#     return transcript
 
 if __name__ == '__main__':
     uvicorn.run(app, host='0.0.0.0', port=8000)

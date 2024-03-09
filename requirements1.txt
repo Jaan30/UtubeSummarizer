@@ -2,3 +2,4 @@ transformers
 bert-extractive-summarizer
 torch
 python-dotenv
+googletrans==4.0.0-rc1
