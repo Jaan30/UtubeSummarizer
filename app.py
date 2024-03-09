@@ -21,8 +21,10 @@ import requests
 import youtube_transcript_api
 from transformers import BartForConditionalGeneration, BartTokenizer
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptAvailable, TranscriptsDisabled
+from youtube_transcript_api._errors import NoTranscriptAvailable, TranscriptsDisabled
 from gtts import gTTS
 import shutil
+from language_mappings import language_map
 
 load_dotenv()
 
@@ -46,7 +48,7 @@ def index(request: Request):
 async def submit_url(request: Request, url: str = Form(...), language: str = Form(...)): 
     # Process the URL and language data as needed
     print(f"Received URL: {url}, Language: {language}")
-    transcript_text = get_transcript(url)
+    transcript_text = get_transcript(url, target_language='en')
     youtube_url = url
     output_path = "./output"
     
@@ -106,28 +108,31 @@ def translate_audio(audio_file_path, target_language='en'):
         text =response.text
     return text
     
-def get_transcript(url):
+def get_transcript(url, target_language='en'):
     try:
-        video_id = url.split("v=")[1]  # Extract video ID from the URL
-        transcript = YouTubeTranscriptApi.get_transcript(video_id)
-        # print(transcript)
-        text = ""
-        for line in transcript:
-            text += line['text'] + " "
-        # detected_lang = detect(text)
-        # Translate transcript to English if necessary
-        if detected_lang != 'en':
-            translator = Translator()
-            translation = translator.translate(text,src=detected_lang, dest='en')
-            text = translation.text 
-            return text
-        else:
-            return text
+        video_id = url.split("v=")[1]
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
 
-    except NoTranscriptAvailable:
+        # Extract the languages from the transcript list
+        available_languages = [transcript.language for transcript in transcript_list]
+        lang = get_language_code(available_languages[0].split('(')[0].strip())
+
+        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=[lang])
+        text = " ".join(line['text'] for line in transcript)
+        text = translate_text(text, target_language=target_language)
+        return text
+
+    except (NoTranscriptAvailable, TranscriptsDisabled):
         return None
-    except TranscriptsDisabled:
-        return None
+
+def get_language_code(language_name):
+    # You need to define language_map somewhere in your code
+    return language_map.get(language_name)
+
+def translate_text(text, target_language='en'):
+    translator = Translator()
+    translated_text = translator.translate(text, dest=target_language).text
+    return translated_text
 
 def download_audio(youtube_url, output_path, filename="audio"):
     yt = YouTube(youtube_url)

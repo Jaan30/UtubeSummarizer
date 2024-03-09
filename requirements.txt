@@ -11,7 +11,7 @@ scikit-learn
 uvicorn
 pytube
 assemblyai
-googletrans
+googletrans==4.0.0-rc1
 openai==0.28
 Jinja2==3.0.3
 requests
