@@ -83,10 +83,22 @@ async def submit_url(request: Request, url: str = Form(...), language: str = For
     # Move the audio file to the static directory
     shutil.move(f"{audio_file}", "static/summary_audio.mp3")
 
+    #Embedded url formation
+    def get_embedded_url(url):
+        if "youtu.be/" in url:
+            video_id = url.split("youtu.be/")[1].split("?")[0]
+        elif "watch?v=" in url:
+            video_id = url.split("v=")[1].split("&")[0]
+        else:
+            raise ValueError("Invalid YouTube URL format")
+        embedded_url = f"https://www.youtube-nocookie.com/embed/{video_id}"
+        return embedded_url
+        
+
     # Render the result.html template with the summary and audio file
     context = {
         "request": request,
-        "url": url,
+        "url": get_embedded_url(url),
         "summary_text": summary_text,
         "audio_file": audio_file
     }
@@ -109,7 +121,13 @@ def translate_audio(audio_file_path, target_language='en'):
     
 def get_transcript(url, target_language='en'):
     try:
-        video_id = url.split("v=")[1]
+        if "youtu.be/" in url:
+            video_id = url.split("youtu.be/")[1].split("?")[0]
+        elif "watch?v=" in url:
+            video_id = url.split("v=")[1].split("&")[0]
+        else:
+            raise ValueError("Invalid YouTube URL format")
+
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
 
         # Extract the languages from the transcript list
