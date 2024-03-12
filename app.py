@@ -19,10 +19,10 @@ from transformers import GPT2Tokenizer, GPT2LMHeadModel
 import torch
 import requests
 import youtube_transcript_api
-from transformers import BartForConditionalGeneration, BartTokenizer
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptAvailable, TranscriptsDisabled
 from youtube_transcript_api._errors import NoTranscriptAvailable, TranscriptsDisabled
 from gtts import gTTS
+
 import shutil
 from language_mappings import language_map
 
@@ -47,34 +47,51 @@ def index(request: Request):
 @app.post("/submit_url", response_class=HTMLResponse)
 async def submit_url(request: Request, url: str = Form(...), language: str = Form(...)): 
     # Process the URL and language data as needed
+    
     print(f"Received URL: {url}, Language: {language}")
+    
+    download_audio(url, output_path="./output", filename="audio")
+    audio_file_path = './output/audio.mp3'
+    
     transcript_text = get_transcript(url, target_language='en')
     # refine_text = preprocess_transcript(transcript_text)
     youtube_url = url
-    output_path = "./output"
+    # output_path = "./output"
+    
     
     if not transcript_text:
-        download_audio(url, output_path="./output", filename="audio")
-        audio_file_path = './output/audio.mp3'
-        translation_text = translate_audio(audio_file_path, target_language='en')
+        
+        translation_text = translate_audio( target_language='en')
     else:
         translation_text = transcript_text
         
-    tokenizer = BartTokenizer.from_pretrained("facebook/bart-large-cnn")
-    model = BartForConditionalGeneration.from_pretrained("facebook/bart-large-cnn")
-    
-    # Tokenize the translation_text
-    inputs = tokenizer([translation_text], max_length=1024, return_tensors="pt", truncation=True)
+    print(translation_text)
 
-    # Generate summary using the BART model
-    summary_ids = model.generate(inputs.input_ids, max_length=250, min_length=150, num_beams=4, early_stopping=True)
+    # Initialize the summarization pipeline
+    summarizer = pipeline("summarization")
 
-    # Decode the summary tokens back into text
-    summary_text = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+    # Define the maximum length of each chunk
+    max_chunk_length = 1000  # Adjust as needed
+
+    # Split the translation_text into smaller chunks
+    chunks = [translation_text[i:i+max_chunk_length] for i in range(0, len(translation_text), max_chunk_length)]
+
+    # Initialize an empty list to store the summaries
+    summary_texts = []
+
+    # Summarize each chunk separately
+    for chunk in chunks:
+        result = summarizer(chunk, max_length=20, min_length=10, do_sample=False)
+        summary_texts.append(result[0]['summary_text'])
+
+    # Concatenate the summaries to get the final summary for the entire text
+    final_summary = " ".join(summary_texts)
+
+    print("summary_text :",final_summary)
+
     
-    print("Summary Text:", summary_text)
     # Generate audio for the summary
-    tts = gTTS(summary_text, lang='en')
+    tts = gTTS(final_summary, lang='en')
 
     # Save the audio as a temporary file
     audio_file = "summary_audio.mp3"
@@ -99,13 +116,14 @@ async def submit_url(request: Request, url: str = Form(...), language: str = For
     context = {
         "request": request,
         "url": get_embedded_url(url),
-        "summary_text": summary_text,
+        "summary_text": final_summary,
         "audio_file": audio_file
     }
 
     return templates.TemplateResponse("result.html", context)
 
-def translate_audio(audio_file_path, target_language='en'):
+def translate_audio(target_language='en'):
+    audio_file_path = './output/audio.mp3'
     API_KEY = os.getenv("API_KEY")
     model_id = 'whisper-1'
 
@@ -120,6 +138,7 @@ def translate_audio(audio_file_path, target_language='en'):
     return text
     
 def get_transcript(url, target_language='en'):
+    audio_file_path = './output/audio.mp3'
     try:
         if "youtu.be/" in url:
             video_id = url.split("youtu.be/")[1].split("?")[0]
@@ -137,7 +156,7 @@ def get_transcript(url, target_language='en'):
         transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=[lang])
         text = " ".join(line['text'] for line in transcript)
         if lang!='en':
-            text = translate_text(text)
+            text=translate_audio(target_language='en')
         return text
 
     except (NoTranscriptAvailable, TranscriptsDisabled):
