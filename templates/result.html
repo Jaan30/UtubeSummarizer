@@ -4,8 +4,19 @@
         <title>YouTube Video Summarizer</title>
         <link rel="stylesheet" href="./static/style.css">
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-
+        <script src="https://kit.fontawesome.com/20c5629a29.js" crossorigin="anonymous"></script>
         <style>
+            .custom-button {
+                color: white;
+                width: 130px;
+                height: 45px;
+                border-width: 0;
+                border-radius: 8px;
+                margin-left:1vw;
+                margin-top:2vh;
+                border-color: transparent;
+                background-color: transparent;
+            }
             html, body {
                 background: linear-gradient(to bottom right, #f48ccc 0%, #6696e8 100%);
                 height: 100%;
@@ -16,6 +27,7 @@
                 width: 80%;
                 margin: 0 auto;
                 padding: 10px;
+                padding-right: 15px;
                 background-color: white;
                 border-radius: 20px;
                 box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
@@ -27,22 +39,104 @@
                 left: 50%;
                 transform: translate(-50%, -50%);
             }
+
+
+            ::-webkit-scrollbar {
+                width: 10px; /* Width of the scrollbar */
+                margin-right: 1vw; /* Right margin of the scrollbar */
+            }
+
+            /* Track */
+            ::-webkit-scrollbar-track {
+                background: #f1f1f1; /* Color of the track */
+            }
+
+            /* Handle */
+            ::-webkit-scrollbar-thumb {
+                background: #888; /* Color of the handle */
+                border-radius: 5px; /* Rounded corners */
+            }
+
+            /* Handle on hover */
+            ::-webkit-scrollbar-thumb:hover {
+                background: #555; /* Color of the handle on hover */
+            }
+            .copy-symbol {
+            cursor: pointer;
+            margin-left: 5px; /* Adjust the margin as needed */
+        }
+
+        .copy-message {
+            display: none;
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        #summaryHeading {
+            position: relative;
+        }
+
+        .copy-symbol:hover + .copy-message {
+            display: block;
+        }
+
+
         </style>
     </head>
     <body>
         <!-- <iframe width="560" height="315" src="{{url}}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>-->
          <!-- <p>{{url}}</p> -->
+         <button class="custom-button" id="goToIndexButton" style='font-size:24px'><i class='fas fa-arrow-left'></i> Home</button>
          <div class="container">
             <iframe width="740" height="400" src="{{url}}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-            <div style="margin-left: 2vw; padding: 20px; border: 1px solid black; border-radius: 20px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);">
-                <h2>Summary Text</h2>
-                <p style="text-align: justify;">{{summary_text}}</p>
-                <h2>Summary Audio</h2>
-                <audio controls>
-                    <source src="./static/summary_audio.mp3" type="audio/mpeg">
-                    Your browser does not support the audio element.
-                </audio>
+            <div style="display: flex;flex-direction: column; justify-content: space-between; height: 50vh;">
+                <div style="margin-left: 2vw; padding: 20px; border-radius: 20px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2); overflow-y: scroll;">
+                    <h2 id="summaryHeading">Summary Text<span id="copySymbol" class="copy-symbol" onclick="copyText()">📋</span></h2>
+                    <p id="summaryContent" style="text-align: justify;">{{summary_text}}</p>
+                    <div id="copyMessage" class="copy-message">Copy Text</div>
+
+                </div>
+                <div style="margin-left: 2vw; padding: 20px;  ">
+                    <h2>Summary Audio</h2>
+                    <audio controls>
+                        <source src="./static/summary_audio.mp3" type="audio/mpeg">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
             </div>
         </div>
+        <script>
+            document.getElementById("goToIndexButton").addEventListener("click", function() {
+              // Redirect to index.html
+              window.location.href = "/";
+            });
+            function copyText() {
+                var textToCopy = document.getElementById("summaryContent").innerText;
+
+                // Create a temporary textarea element to hold the text
+                var textarea = document.createElement("textarea");
+                textarea.value = textToCopy;
+                document.body.appendChild(textarea);
+
+                // Select the text in the textarea
+                textarea.select();
+                textarea.setSelectionRange(0, 99999); // For mobile devices
+
+                // Copy the selected text
+                document.execCommand("copy");
+
+                // Remove the temporary textarea
+                document.body.removeChild(textarea);
+
+                // Alert the user or provide feedback
+                alert("Text copied to clipboard!");
+            }
+          </script>
+          
     </body>
+
 </html>

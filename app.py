@@ -67,6 +67,48 @@ async def submit_url(request: Request, url: str = Form(...), language: str = For
         
     print(translation_text)
 
+
+    
+    def remove_special_characters(text):
+        # Define the pattern to match any character that is not a letter, number, space, period, comma, exclamation mark, or question mark
+        pattern = r'[^a-zA-Z0-9.,!?\- ]'
+        
+        # Replace all matches of the pattern with an empty string
+        cleaned_text = re.sub(pattern, '', text)
+        
+        return cleaned_text
+
+    translation_text= remove_special_characters(translation_text)
+
+    def remove_specified_words_and_phrases(text, removal_list):
+        # Create a regular expression pattern to match any of the specified words or phrases
+        pattern = re.compile(r'\b(?:' + '|'.join(map(re.escape, removal_list)) + r')\b', flags=re.IGNORECASE)
+        # Replace all matches of the pattern with an empty string
+        cleaned_text = pattern.sub('', text)  
+        return cleaned_text
+
+    # Function to read removal list from file
+    def read_removal_list_from_file(file_path):
+        with open(file_path, "r") as file:
+            removal_list = [line.strip() for line in file]
+        return removal_list
+
+    
+    # Example usage
+    removal_list = read_removal_list_from_file("removal_list.txt")
+    translation_text = remove_specified_words_and_phrases(translation_text, removal_list)
+
+    def remove_special_symbols_except_one(text):
+        # Define the pattern to match any consecutive special symbols except one
+        pattern = r'([^\w\s])\1+'
+        
+        # Replace all consecutive matches of the pattern with a single occurrence of the matched symbol
+        cleaned_text = re.sub(pattern, r'\1', text)
+        
+        return cleaned_text
+
+    translation_text = remove_special_symbols_except_one(translation_text)
+
     # Initialize the summarization pipeline
     summarizer = pipeline("summarization")
 
@@ -166,10 +208,6 @@ def get_language_code(language_name):
     # You need to define language_map somewhere in your code
     return language_map.get(language_name)
 
-def translate_text(text , target_language='en'):
-    translator = Translator()
-    translated_text = translator.translate(text, dest=target_language).text
-    return translated_text
 
 def download_audio(youtube_url, output_path, filename="audio"):
     yt = YouTube(youtube_url)
